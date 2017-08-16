@@ -68,6 +68,39 @@ def get_binary(csv_fname, OBJECTS=['person'], limit=None, start=0, WINDOW=30):
     counts = smoothed_counts
     return counts
 
+def get_bounding_boxes(csv_fname, OBJECTS=['person'], limit=None, start=0, confidence_min=0.5):
+    df = pd.read_csv(csv_fname)
+    df = df[df['object_name'].isin(OBJECTS)]
+    df = df[df['confidence'] >= confidence_min]
+    df = df[df['frame'] >= start]
+    if limit != None:
+        df = df[df['frame'] < start + limit]
+    # Fix out of bounds errors in data
+    # WARNING: ASSUMES RELATIVE BB COORDINATES!!! (0,1)
+    df['xmin'] = df['xmin'].apply(lambda x: max(0,x))
+    df['ymin'] = df['ymin'].apply(lambda x: max(0, x))
+    df['xmax'] = df['xmax'].apply(lambda x: min(1, x))
+    df['ymax'] = df['ymax'].apply(lambda x: min(1, x))
+    # Calculate center and width, height
+    df['xcent'] = (df['xmin'] + df['xmax'])/2
+    df['ycent'] = (df['ymin'] + df['ymax'])/2
+    df['width'] = df['xmax'] - df['xcent']
+    df['height'] = df['ymax'] - df['ycent']
+    #Sort to prevent problems later and keep highest confidence bounding boxes
+    df.sort_values(['frame', 'confidence'], ascending = [True, False], inplace=True)
+    df = df.drop_duplicates('frame')
+    # Get list of frames with object in them
+    positive_frames = list(df['frame'])
+    # Remove extraneous columns (otherwise regression will try to predict them)
+    df = df.drop('xmin', axis=1)
+    df = df.drop('xmax', axis=1)
+    df = df.drop('ymin', axis=1)
+    df = df.drop('ymax', axis=1)
+    df = df.drop('confidence', axis=1)
+    df = df.drop('frame', axis=1)
+    df = df.drop('object_name', axis=1)
+    return positive_frames, df.as_matrix()
+            
 def smooth_binary(counts):
     for i in xrange(1, len(counts) - 1):
         if counts[i][0] > 0:

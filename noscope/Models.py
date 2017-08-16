@@ -30,7 +30,7 @@ def get_loss(regression):
 
 def get_optimizer(regression, nb_layers, lr_mult=1):
     if regression:
-        return keras.optimizers.RMSprop(lr=0.001 / (1.5 * nb_layers) * lr_mult)
+        return keras.optimizers.RMSprop(lr=0.001 / (1.5 * (nb_layers + 2)) * lr_mult)
     else:
         return keras.optimizers.RMSprop(lr=0.001 * lr_mult)# / (5 * nb_layers))
 
@@ -140,10 +140,10 @@ def generate_vgg16(input_shape, nb_classes, full_16=False, regression=False):
     return model
 
 
-# Data takes form (X_train, Y_train, X_test, Y_test)
-def run_model(model, data, batch_size=32, nb_epoch=1, patience=2,
+# Data takes form (X_train, Y_train)
+def train_model(model, data, batch_size=32, nb_epoch=1, patience=2,
         validation_data=(None, None)):
-    X_train, Y_train, X_test, Y_test = data
+    X_train, Y_train = data
     temp_fname = tempfile.mkstemp(suffix='.hdf5', dir='/tmp/')[1]
 
     # 50k should be a reasonable validation split
@@ -220,6 +220,40 @@ def stats_from_proba(proba, Y_test):
                'windowed_support': windowed_supp}
     return metrics
 
+def intersection_over_union(ground_truth, predicted):
+    assert len(ground_truth) == len(predicted), 'Ground truth and prediction arrays unequal lengths'
+    iou_list = []
+    for i in range(0, len(ground_truth)):
+        box1 = list(ground_truth[i])
+        box2 = list(predicted[i])
+        if(box1[0] + box1[2] <= box2[0] - box2[2] or \
+           box2[0] + box2[2] <= box1[0] - box1[2] or \
+           box1[1] + box1[3] <= box2[1] - box2[3] or \
+           box2[1] + box2[3] <= box1[1] - box1[3]):
+            iou_list.append(0.0)
+        else:
+            xA = min(box1[0] + box1[2], box2[0] + box2[2])
+            yA = min(box1[1] + box1[3], box2[1] + box2[3])
+            xB = max(box1[0] - box1[2], box2[0] - box2[2])
+            yB = max(box1[1] - box1[3], box2[1] - box2[3])
+            interArea = (xA - xB) * (yA - yB)
+            box1Area = (2 * box1[2]) * (2 * box1[3])
+            box2Area = (2 * box2[2]) * (2 * box2[3])
+            #Sometimes boxes do not overlap but are very close, and have very small negative IOUs
+            iou_list.append(max(interArea / float(box1Area + box2Area - interArea), 0.0))
+    return iou_list
+
+def evaluate_model_bounding_boxes(model, X_test, Y_test, batch_size=256):
+    begin = time.time()
+    predictions = model.predict(X_test, batch_size=batch_size, verbose=0)
+    end = time.time()
+    mse = sklearn.metrics.mean_squared_error(Y_test, predictions)
+    ious = intersection_over_union(Y_test, predictions)
+    metrics = {}
+    metrics['mse'] = mse
+    metrics['test_time'] = end - begin
+    metrics['mean_iou'] = sum(ious)/float(len(ious))
+    return metrics
 
 def evaluate_model_regression(model, X_test, Y_test, batch_size=256):
     begin = time.time()
@@ -279,31 +313,60 @@ def evaluate_model(model, X_test, Y_test, batch_size=256):
                'test_time': test_time}
     return metrics
 
+def write_predictions(model, X_train, X_test, ID_train, ID_test, column_names, csv_fname, batch_size=256):
+    train_predict = model.predict(X_train, batch_size=batch_size, verbose=0)
+    test_predict = model.predict(X_test, batch_size=batch_size, verbose=0)
+    train_predict = np.insert(train_predict, 0, ID_train, axis=1)
+    test_predict = np.insert(test_predict, 0, ID_test, axis=1)
+    all_predictions = np.concatenate([train_predict, test_predict])
+    DataUtils.output_csv(csv_fname, all_predictions, column_names)
+
 
 def learn_and_eval(model, data, nb_epoch=2, batch_size=128,
         validation_data=(None, None)):
     X_train, Y_train, X_test, Y_test = data
-    train_time = run_model(model, data, nb_epoch=nb_epoch,
+    train_time = train_model(model, data, nb_epoch=nb_epoch,
             batch_size=batch_size, validation_data=validation_data)
     metrics = evaluate_model(model, X_test, Y_test, batch_size=batch_size)
     return train_time, metrics
 
 
 # NOTE: assumes first two parameters are: (image_size, nb_classes)
-def try_params(model_gen, params, data,
-               output_dir, base_fname, model_name, OBJECT,
-               regression=False, nb_epoch=2, validation_data=(None, None)):
+def try_params(model_gen, params, data, output_dir, base_fname, model_name,
+               OBJECT, model_type, nb_epoch=2, validation_data=(None, None)):
     def metrics_names(metrics):
         return sorted(metrics.keys())
     def metrics_to_list(metrics):
         return map(lambda key: metrics[key], metrics_names(metrics))
-
+    
     summary_csv_fname = os.path.join(
             output_dir, base_fname + '_' + model_name + '_summary.csv')
 
-    X_train, Y_train, X_test, Y_test = data
+    X_train, Y_train, ID_train, X_test, Y_test, ID_test = data
+    training_data = (X_train, Y_train)
     nb_classes = params[1]
     to_write = []
+
+    #Switch on all model types
+    if model_type == 'bounding_box':
+        regression = True
+        evaluation_method = evaluate_model_bounding_boxes
+        headers = ['frame', 'xcent', 'ycent', 'width', 'height']
+    elif model_type == 'binary':
+        regression = False
+        evaluation_method = evaluate_model
+        headers = ['frame', 'confidence']
+    elif model_type == 'binary_multiclass':
+        regression = False
+        evaluation_method = evaluate_model_multiclass
+        headers = ['frame', 'confidence'] #FIXME
+    elif model_type == 'binary_regression':
+        regression = True
+        evaluation_method = evaluate_model_regression
+        headers = ['frame', 'confidence'] #FIXME
+    else:
+        raise ValueError("%s not a recognized model type" %model_type)
+    
     for param in params:
         param_base_fname = base_fname + '_' + model_name + '_' + '_'.join(map(str, param[2:]))
         model_fname = os.path.join(
@@ -313,39 +376,32 @@ def try_params(model_gen, params, data,
 
         # Make, train, and evaluate the model
         model = model_gen(*param, regression=regression)
-        if regression:
-            train_time = run_model(model, data, nb_epoch=nb_epoch,
-                    validation_data=validation_data)
-            metrics = evaluate_model_regression(model, X_test, Y_test)
-        else:
-            if nb_classes == 2:
-                train_time, metrics = learn_and_eval(model, data,
-                        validation_data=validation_data)
-            else:
-                train_time = run_model(model, data, nb_epoch=nb_epoch,
-                        validation_data=validation_data)
-                metrics = evaluate_model_multiclass(model, X_test, Y_test)
+        train_time = train_model(model, training_data, nb_epoch=nb_epoch,
+                                 validation_data = validation_data)
+        metrics = evaluation_method(model, X_test, Y_test)
 
         # Output predictions and save the model
         # Redo some computation to save my sanity
-        conf1 = model.predict(X_train, batch_size=256, verbose=0)
-        conf2 = model.predict(X_test,  batch_size=256, verbose=0)
+        '''conf1 = model.predict(X_train, batch_size=256, verbose=0)
+        conf2 = model.predict(X_test, batch_size=256, verbose=0)
         conf = np.concatenate([conf1, conf2])
         if len(conf.shape) > 1:
             assert len(conf.shape) == 2
-            assert conf.shape[1] <= 2
+            #assert conf.shape[1] <= 2
             if conf.shape[1] == 2:
                 conf = conf[:, 1]
             else:
                 conf = np.ravel(conf)
-        DataUtils.confidences_to_csv(csv_fname, conf, OBJECT)
+        DataUtils.confidences_to_csv(csv_fname, conf, OBJECT)'''
+        write_predictions(model, X_train, X_test, ID_train, ID_test, headers, csv_fname)
         model.save(model_fname)
 
         to_write.append(list(param[2:]) + [train_time] + metrics_to_list(metrics))
         print param
         print train_time, metrics
         print
-    print to_write
+    #print to_write
+    print "Completed Parameter Search"
     # First two params don't need to be written out
     param_column_names = map(lambda i: 'param' + str(i), xrange(len(params[0]) - 2))
     column_names = param_column_names + ['train_time'] + metrics_names(metrics)
