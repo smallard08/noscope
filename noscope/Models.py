@@ -113,7 +113,7 @@ def generate_vgg16_conv(input_shape, full_16=False, dropout=True):
     if full_16:
         for i in xrange(2):
             model.add(Convolution2D(512, 3, 3, activation='relu', border_mode=border_mode))
-            model.add(Convolution2D(512, 3, 3, activation='relu', border_mode=border_mode))
+            model.add(Convolution1D(512, 3, 3, activation='relu', border_mode=border_mode))
             model.add(Convolution2D(512, 3, 3, activation='relu', border_mode=border_mode))
             model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
             if dropout:
@@ -248,11 +248,11 @@ def evaluate_model_bounding_boxes(model, X_test, Y_test, batch_size=256):
     predictions = model.predict(X_test, batch_size=batch_size, verbose=0)
     end = time.time()
     mse = sklearn.metrics.mean_squared_error(Y_test, predictions)
-    ious = intersection_over_union(Y_test, predictions)
+    #ious = intersection_over_union(Y_test, predictions)
     metrics = {}
     metrics['mse'] = mse
     metrics['test_time'] = end - begin
-    metrics['mean_iou'] = sum(ious)/float(len(ious))
+    #metrics['mean_iou'] = sum(ious)/float(len(ious))
     return metrics
 
 def evaluate_model_regression(model, X_test, Y_test, batch_size=256):
@@ -351,7 +351,8 @@ def try_params(model_gen, params, data, output_dir, base_fname, model_name,
     if model_type == 'bounding_box':
         regression = True
         evaluation_method = evaluate_model_bounding_boxes
-        headers = ['frame', 'xcent', 'ycent', 'width', 'height']
+        #headers = ['frame', 'xcent', 'ycent', 'width', 'height']
+	headers = ['frame', 'xcent', 'ycent']
     elif model_type == 'binary':
         regression = False
         evaluation_method = evaluate_model

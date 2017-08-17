@@ -84,8 +84,8 @@ def get_bounding_boxes(csv_fname, OBJECTS=['person'], limit=None, start=0, confi
     # Calculate center and width, height
     df['xcent'] = (df['xmin'] + df['xmax'])/2
     df['ycent'] = (df['ymin'] + df['ymax'])/2
-    df['width'] = df['xmax'] - df['xcent']
-    df['height'] = df['ymax'] - df['ycent']
+    #df['width'] = df['xmax'] - df['xcent']
+    #df['height'] = df['ymax'] - df['ycent']
     #Sort to prevent problems later and keep highest confidence bounding boxes
     df.sort_values(['frame', 'confidence'], ascending = [True, False], inplace=True)
     df = df.drop_duplicates('frame')

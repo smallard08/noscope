@@ -20,14 +20,6 @@ def to_test_train(avg_fname, all_frames, all_labels, frame_ids, train_ratio=0.6)
     np.save(avg_fname, mean)
     N = 150000
     # N = 500000
-    '''pos_inds = np.random.permutation(np.where(all_counts.ravel() == 0))
-    pos_inds = pos_inds[0, 0 : N/2]
-    neg_inds = np.random.permutation(np.where(all_counts.ravel() == 1))
-    neg_inds = neg_inds[0, 0 : N/2]
-    print pos_inds.shape
-    print neg_inds.shape
-    p = np.concatenate([pos_inds, neg_inds])
-    np.random.shuffle(p)'''
     X -= mean
     X_train, X_test = split(X)
     Y_train, Y_test = split(all_labels)
@@ -117,7 +109,7 @@ def main():
     parser.add_argument('--base_name', required=True, help='Base output name')
     parser.add_argument('--objects', required=True, help='Objects to classify. Comma separated')
     parser.add_argument('--avg_fname', required=True, help='File containing average pixel values for every frame')
-    parser.add_argument('--bounding_boxes', default=False, type=bool, help='Set to True for bounding box detection' )
+    parser.add_argument('--bounding_boxes', default=False, type=bool, help='Set to True for bounding box detection')
     parser.add_argument('--num_frames', type=int, help='Number of frames')
     parser.add_argument('--start_frame', type=int)
     args = parser.parse_args()
@@ -157,7 +149,7 @@ def main():
             noscope.Models.generate_conv_net_base,
             list(itertools.product(
                     *[[X_train.shape[1:]], [num_outputs],
-                      [32, 64, 128, 256], [32], [0, 1, 2]])),
+                      [32, 64, 128, 256, 512, 1024], [32], [0, 1, 2]])),
             data,
             args.output_dir,
             args.base_name,
