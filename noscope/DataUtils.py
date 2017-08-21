@@ -99,6 +99,7 @@ def get_bounding_boxes(csv_fname, OBJECTS=['person'], limit=None, start=0, confi
     df = df.drop('confidence', axis=1)
     df = df.drop('frame', axis=1)
     df = df.drop('object_name', axis=1)
+    print df.iloc[0]
     return positive_frames, df.as_matrix()
             
 def smooth_binary(counts):

@@ -313,11 +313,14 @@ def evaluate_model(model, X_test, Y_test, batch_size=256):
                'test_time': test_time}
     return metrics
 
-def write_predictions(model, X_train, X_test, ID_train, ID_test, column_names, csv_fname, batch_size=256):
+def write_predictions(model, data, column_names, csv_fname, batch_size=256):
+    X_train, Y_train, ID_train, X_test, Y_test, ID_test = data
     train_predict = model.predict(X_train, batch_size=batch_size, verbose=0)
     test_predict = model.predict(X_test, batch_size=batch_size, verbose=0)
     train_predict = np.insert(train_predict, 0, ID_train, axis=1)
+    train_predict = np.concatenate([train_predict, Y_train], axis=1)
     test_predict = np.insert(test_predict, 0, ID_test, axis=1)
+    test_predict = np.concatenate([test_predict, Y_test], axis=1)
     all_predictions = np.concatenate([train_predict, test_predict])
     DataUtils.output_csv(csv_fname, all_predictions, column_names)
 
@@ -352,7 +355,7 @@ def try_params(model_gen, params, data, output_dir, base_fname, model_name,
         regression = True
         evaluation_method = evaluate_model_bounding_boxes
         #headers = ['frame', 'xcent', 'ycent', 'width', 'height']
-	headers = ['frame', 'xcent', 'ycent']
+	headers = ['frame', 'xcent', 'ycent', 'xcent_true', 'ycent_true']
     elif model_type == 'binary':
         regression = False
         evaluation_method = evaluate_model
@@ -394,7 +397,7 @@ def try_params(model_gen, params, data, output_dir, base_fname, model_name,
             else:
                 conf = np.ravel(conf)
         DataUtils.confidences_to_csv(csv_fname, conf, OBJECT)'''
-        write_predictions(model, X_train, X_test, ID_train, ID_test, headers, csv_fname)
+        write_predictions(model, data, headers, csv_fname)
         model.save(model_fname)
 
         to_write.append(list(param[2:]) + [train_time] + metrics_to_list(metrics))
