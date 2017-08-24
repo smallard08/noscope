@@ -86,8 +86,12 @@ def get_bounding_boxes(csv_fname, OBJECTS=['person'], limit=None, start=0, confi
     df['ycent'] = (df['ymin'] + df['ymax'])/2
     df['width'] = df['xmax'] - df['xcent']
     df['height'] = df['ymax'] - df['ycent']
+    df['xdist'] = df['xcent']**2
+    df['ydist'] = (1 - df['ycent'])**2
+    df['dist'] = df['xdist'] + df['ydist']
+    df['dist'] = df['dist'].apply(lambda x: np.sqrt(x))
     #Sort to prevent problems later and keep highest confidence bounding boxes
-    df.sort_values(['frame', 'confidence'], ascending = [True, False], inplace=True)
+    df.sort_values(['frame', 'dist'], ascending = [True, False], inplace=True)
     df = df.drop_duplicates('frame')
     # Get list of frames with object in them
     positive_frames = list(df['frame'])
@@ -99,6 +103,9 @@ def get_bounding_boxes(csv_fname, OBJECTS=['person'], limit=None, start=0, confi
     df = df.drop('confidence', axis=1)
     df = df.drop('frame', axis=1)
     df = df.drop('object_name', axis=1)
+    df = df.drop('xdist', axis=1)
+    df = df.drop('ydist', axis=1)
+    df = df.drop('dist', axis=1)
     return positive_frames, df.as_matrix()
             
 def smooth_binary(counts):
