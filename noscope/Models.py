@@ -11,6 +11,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
+from keras.layers.normalization import BatchNormalization
 import np_utils
 
 computed_metrics = ['accuracy', 'mean_squared_error']
@@ -30,7 +31,8 @@ def get_loss(regression):
 
 def get_optimizer(regression, nb_layers, lr_mult=1):
     if regression:
-        return keras.optimizers.RMSprop(lr=0.001 / (1.5 * (nb_layers + 2)) * lr_mult)
+        return keras.optimizers.SGD(lr=0.0001)
+        #return keras.optimizers.RMSprop(lr=0.001 / (1.5 * (nb_layers + 2)) * lr_mult)
     else:
         return keras.optimizers.RMSprop(lr=0.001 * lr_mult)# / (5 * nb_layers))
 
@@ -46,21 +48,32 @@ def generate_conv_net_base(
     model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
                             border_mode='same',
                             input_shape=input_shape,
-                            subsample=stride,
-                            activation='relu'))
-    model.add(Convolution2D(nb_filters, 3, 3, border_mode='same', activation='relu'))
+                            subsample=stride))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(Convolution2D(nb_filters, 3, 3, border_mode='same'))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
 
     if nb_layers > 1:
-        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same', activation='relu'))
-        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same', activation='relu'))
+        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same'))
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
+        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same'))
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 
     if nb_layers > 2:
-        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same', activation='relu'))
-        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same', activation='relu'))
+        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same'))
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
+        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same'))
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 

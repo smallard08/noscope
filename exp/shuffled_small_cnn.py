@@ -151,7 +151,7 @@ def main():
 
     X_train, Y_train, ID_train, X_test, Y_test, ID_test = data
         
-    nb_epoch = 4
+    nb_epoch = 30
     
     noscope.Models.try_params(
             noscope.Models.generate_conv_net_base,
