@@ -93,6 +93,8 @@ def get_bounding_boxes(csv_fname, OBJECTS=['person'], limit=None, start=0, confi
     #Sort to prevent problems later and keep highest confidence bounding boxes
     df.sort_values(['frame', 'dist'], ascending = [True, False], inplace=True)
     df = df.drop_duplicates('frame')
+    # Add indication there is a bus in the frame
+    df['indicator'] = np.ones(len(df), dtype='uint8')
     # Get list of frames with object in them
     positive_frames = list(df['frame'])
     # Remove extraneous columns (otherwise regression will try to predict them)

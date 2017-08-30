@@ -47,6 +47,40 @@ def shuffle_data(X, Y, indexes=None):
         indexes = p.tolist()
     return X[p], Y[p], indexes
 
+def pad_empty_frames(positive_frames, all_boxes, start_frame, num_frames):
+    print all_boxes.shape
+    print num_frames
+    end_frame = start_frame + num_frames
+    filler_list = np.asarray([-1,-1,-1,-1,0])
+    all_boxes_filled = []
+    all_boxes_idx = 0
+    for i in range(start_frame, end_frame):
+        if i in positive_frames:
+            all_boxes_filled.append(all_boxes[all_boxes_idx])
+            all_boxes_idx = all_boxes_idx + 1
+        else:
+            all_boxes_filled.append(filler_list)
+    all_boxes = np.stack(all_boxes_filled)
+    print all_boxes.shape
+    return all_boxes
+
+def fill_averages(Y_train, Y_test):
+    num_objects = 0
+    averages = np.zeros(len(Y_train[0]) - 1)
+    for i in range(0,len(Y_train)):
+        if Y_train[i,4] == 1:
+            averages = np.add(averages, Y_train[i,:4])
+            num_objects = num_objects + 1
+    averages = np.divide(averages, num_objects)
+    print averages
+    for i in range(0, len(Y_train)):
+        if Y_train[i,4] == 0:
+            Y_train[i,:4] = averages
+    for i in range(0, len(Y_test)):
+        if Y_test[i,4] == 0:
+            Y_test[i,:4] = averages
+    return Y_train, Y_test
+
 def get_binary_data(csv_fname, video_fname, avg_fname,
              num_frames=None, start_frame=0,
              OBJECTS=['person'], resol=(50, 50),
@@ -89,21 +123,25 @@ def get_bounding_box_data(csv_fname, video_fname, avg_fname,
     print '\tParsing %s, extracting %s' %(csv_fname, str(OBJECTS))
     positive_frames, all_boxes = noscope.DataUtils.get_bounding_boxes(csv_fname, limit=num_frames,
                                                                       OBJECTS=OBJECTS, start=start_frame)
+    all_boxes = pad_empty_frames(positive_frames, all_boxes, start_frame, num_frames)
     print "\tRetrieving %s frames from %s" %(num_frames,video_fname)
     all_frames = noscope.VideoUtils.get_all_frames(
             num_frames, video_fname, scale=resol, start=start_frame)
     print "\tFiltering empty frames"
-    object_frames = list()
-    if num_frames > len(positive_frames) or num_frames == None:
-        print "\tTaking %s non-empty frames" %len(positive_frames)
-        num_frames = len(positive_frames)
-    for i in range(0, num_frames):
-        object_frames.append(all_frames[positive_frames[i]])
-    object_frames = np.stack(object_frames, axis=0)
-    object_frames, all_boxes, positive_frames = shuffle_data(object_frames, all_boxes, positive_frames)
+    #object_frames = list()
+    #if num_frames > len(positive_frames) or num_frames == None:
+    #    print "\tTaking %s non-empty frames" %len(positive_frames)
+    #    num_frames = len(positive_frames)
+    #for i in range(0, num_frames):
+    #    object_frames.append(all_frames[positive_frames[i]])
+    #object_frames = np.stack(object_frames, axis=0)
+    object_frames = all_frames
+    object_frames, all_boxes, positive_frames = shuffle_data(object_frames, all_boxes)
+    print all_boxes[0]
     print "\tSplitting into training and test sets"
     X_train, Y_train, ID_train, X_test, Y_test, ID_test = to_test_train(avg_fname, object_frames, all_boxes,
                                                                         positive_frames)
+    Y_train, Y_test = fill_averages(Y_train, Y_test)
     print "%s training frames, %s testing frames" %(len(X_train), len(X_test))
     data = (X_train, Y_train, ID_train, X_test, Y_test, ID_test)
     num_outputs = len(Y_train[0])
@@ -151,7 +189,7 @@ def main():
 
     X_train, Y_train, ID_train, X_test, Y_test, ID_test = data
         
-    nb_epoch = 4
+    nb_epoch = 10
     
     noscope.Models.try_params(
             noscope.Models.generate_conv_net_base,

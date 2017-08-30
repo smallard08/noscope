@@ -11,6 +11,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
+from keras.layers.normalization import BatchNormalization
 import np_utils
 
 computed_metrics = ['accuracy', 'mean_squared_error']
@@ -46,21 +47,32 @@ def generate_conv_net_base(
     model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
                             border_mode='same',
                             input_shape=input_shape,
-                            subsample=stride,
-                            activation='relu'))
-    model.add(Convolution2D(nb_filters, 3, 3, border_mode='same', activation='relu'))
+                            subsample=stride))
+    model.add(BatchNormalization(axis=3))
+    model.add(Activation('relu'))
+    model.add(Convolution2D(nb_filters, 3, 3, border_mode='same'))
+    model.add(BatchNormalization(axis=3))
+    model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
 
     if nb_layers > 1:
-        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same', activation='relu'))
-        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same', activation='relu'))
+        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same'))
+        model.add(BatchNormalization(axis=3))
+        model.add(Activation('relu'))
+        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same'))
+        model.add(BatchNormalization(axis=3))
+        model.add(Activation('relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 
     if nb_layers > 2:
-        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same', activation='relu'))
-        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same', activation='relu'))
+        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same'))
+        model.add(BatchNormalization(axis=3))
+        model.add(Activation('relu'))
+        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same'))
+        model.add(BatchNormalization(axis=3))
+        model.add(Activation('relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 
@@ -354,7 +366,8 @@ def try_params(model_gen, params, data, output_dir, base_fname, model_name,
     if model_type == 'bounding_box':
         regression = True
         evaluation_method = evaluate_model_bounding_boxes
-        headers = ['frame', 'xcent', 'ycent', 'width', 'height', 'xcent_true', 'ycent_true', 'width_true', 'height_true']
+        headers = ['frame', 'xcent', 'ycent', 'width', 'height', 'indicator', \
+                   'xcent_true', 'ycent_true', 'width_true', 'height_true', 'indicator_true']
     elif model_type == 'binary':
         regression = False
         evaluation_method = evaluate_model
