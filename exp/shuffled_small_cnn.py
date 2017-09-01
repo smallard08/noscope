@@ -138,7 +138,7 @@ def main():
             num_frames=args.num_frames,
             start_frame=args.start_frame,
             OBJECTS=objects,
-            resol=(50,50))
+            resol=(100,100))
         model_type = 'bounding_box'
     else:
         data, num_outputs = get_binary_data(
@@ -151,7 +151,7 @@ def main():
 
     X_train, Y_train, ID_train, X_test, Y_test, ID_test = data
         
-    nb_epoch = 30
+    nb_epoch = 4
     
     noscope.Models.try_params(
             noscope.Models.generate_conv_net_base,
