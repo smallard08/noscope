@@ -86,60 +86,6 @@ def generate_conv_net(input_shape, nb_classes,
             nb_dense=nb_dense, nb_filters=nb_filters, nb_layers=nb_layers, lr_mult=lr_mult,
             regression=regression)
 
-
-def generate_vgg16_conv(input_shape, full_16=False, dropout=True):
-    border_mode = 'same'
-    model = Sequential()
-    model.add(Convolution2D(64, 3, 3, activation='relu', border_mode=border_mode,
-                            input_shape=input_shape))
-    model.add(Convolution2D(64, 3, 3, activation='relu', border_mode=border_mode))
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-    if dropout:
-        model.add(Dropout(0.25))
-
-    model.add(Convolution2D(128, 3, 3, activation='relu', border_mode=border_mode))
-    model.add(Convolution2D(128, 3, 3, activation='relu', border_mode=border_mode))
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-    if dropout:
-        model.add(Dropout(0.25))
-
-    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode=border_mode))
-    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode=border_mode))
-    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode=border_mode))
-    model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-    if dropout:
-        model.add(Dropout(0.25))
-
-    if full_16:
-        for i in xrange(2):
-            model.add(Convolution2D(512, 3, 3, activation='relu', border_mode=border_mode))
-            model.add(Convolution2D(512, 3, 3, activation='relu', border_mode=border_mode))
-            model.add(Convolution2D(512, 3, 3, activation='relu', border_mode=border_mode))
-            model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-            if dropout:
-                model.add(Dropout(0.25))
-
-    return model
-
-
-def generate_vgg16(input_shape, nb_classes, full_16=False, regression=False):
-    model = generate_vgg16_conv(input_shape, full_16=full_16, dropout=True)
-
-    model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(nb_classes))
-
-    if not regression:
-        model.add(Activation('softmax'))
-
-    loss = get_loss(regression)
-    model.compile(loss=loss,
-                  optimizer=get_optimizer(regression, 8 + full_16 * 8),
-                  metrics=computed_metrics)
-    return model
-
-
 # Data takes form (X_train, Y_train, X_test, Y_test)
 def run_model(model, data, batch_size=32, nb_epoch=1, patience=2,
         validation_data=(None, None)):
