@@ -40,8 +40,7 @@ def generate_conv_net_base(
         nb_dense=128, nb_filters=32, nb_layers=1, lr_mult=1,
         kernel_size=(3, 3), stride=(1, 1),
         regression=False):
-    assert nb_layers >= 0
-    assert nb_layers <= 3
+    assert nb_layers >= 1
     model = Sequential()
     model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
                             border_mode='same',
@@ -52,15 +51,10 @@ def generate_conv_net_base(
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
 
-    if nb_layers > 1:
-        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same', activation='relu'))
-        model.add(Convolution2D(nb_filters * 2, 3, 3, border_mode='same', activation='relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(Dropout(0.25))
-
-    if nb_layers > 2:
-        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same', activation='relu'))
-        model.add(Convolution2D(nb_filters * 4, 3, 3, border_mode='same', activation='relu'))
+    for i in range(1, nb_layers):
+        factor = 2 ** i
+        model.add(Convolution2D(nb_filters * factor, 3, 3, border_mode='same', activation='relu'))
+        model.add(Convolution2D(nb_filters * factor, 3, 3, border_mode='same', activation='relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 
