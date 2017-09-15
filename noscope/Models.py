@@ -10,7 +10,8 @@ import keras.optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Convolution2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import BatchNormalization
 import np_utils
 
 computed_metrics = ['accuracy', 'mean_squared_error']
@@ -42,19 +43,19 @@ def generate_conv_net_base(
         regression=False):
     assert nb_layers >= 1
     model = Sequential()
-    model.add(Convolution2D(nb_filters, kernel_size[0], kernel_size[1],
-                            border_mode='same',
-                            input_shape=input_shape,
-                            subsample=stride,
-                            activation='relu'))
-    model.add(Convolution2D(nb_filters, 3, 3, border_mode='same', activation='relu'))
+    model.add(Conv2D(nb_filters, kernel_size,
+                     strides=stride,
+                     padding='same',
+                     input_shape=input_shape,
+                     activation='relu'))
+    model.add(Conv2D(nb_filters, (3, 3), padding='same', activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
 
     for i in range(1, nb_layers):
         factor = 2 ** i
-        model.add(Convolution2D(nb_filters * factor, 3, 3, border_mode='same', activation='relu'))
-        model.add(Convolution2D(nb_filters * factor, 3, 3, border_mode='same', activation='relu'))
+        model.add(Conv2D(nb_filters * factor, (3, 3), padding='same', activation='relu'))
+        model.add(Conv2D(nb_filters * factor, (3, 3), padding='same', activation='relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.25))
 
