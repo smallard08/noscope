@@ -17,10 +17,10 @@ colors = [(0x33, 0x22, 0x88),
 # NOTE: John's YOLO script and numpy have different representations of x,y
 def draw_label(label, image, color=(0, 255, 0)):
     x, y = image.shape[0:2]
-    tl = (int(label['xmin'] * y), int(label['ymin'] * x))
-    br = (int(label['xmax'] * y), int(label['ymax'] * x))
-    # tl = (int(label['xmin']), int(label['ymin']))
-    # br = (int(label['xmax']), int(label['ymax']))
+    # tl = (int(label['xmin'] * y), int(label['ymin'] * x))
+    # br = (int(label['xmax'] * y), int(label['ymax'] * x))
+    tl = (int(label['xmin']), int(label['ymin']))
+    br = (int(label['xmax']), int(label['ymax']))
 
     cv2.rectangle(image, tl, br, color, 3)
     cv2.putText(image, label['object_name'] + ' ' + str(label['confidence']),
