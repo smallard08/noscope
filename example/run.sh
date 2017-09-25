@@ -2,6 +2,14 @@
 CODE_DIR="/home/daniel_d_kang/code/"
 DATA_DIR="/home/daniel_d_kang/data/"
 
+# Move this down to run jackson-town-square
+VIDEO_NAME="jackson-town-square"
+OBJECT="car"
+NUM_FRAMES="918000"
+START_FRAME="0"
+GPU_NUM="0"
+
+
 VIDEO_NAME="coral-reef-long"
 OBJECT="person"
 NUM_FRAMES="1188000"
@@ -35,7 +43,7 @@ python $CODE_DIR/noscope/exp/to_avg.py \
 
 # Run the inference
 rm -r $DATA_DIR/experiments/$VIDEO_NAME
-python noscope_motherdog.py \
+python $CODE_DIR/noscope/examples/noscope_motherdog.py \
   --code_dir $CODE_DIR \
   --data_dir $DATA_DIR \
   --video_name $VIDEO_NAME \

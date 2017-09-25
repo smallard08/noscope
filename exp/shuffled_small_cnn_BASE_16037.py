@@ -115,7 +115,7 @@ def main():
             noscope.Models.generate_conv_net_base,
             list(itertools.product(
                     *[[X_train.shape[1:]], [nb_classes],
-                      [32, 64, 128, 256], [32], [1, 2, 3]])),
+                      [32, 64, 128, 256], [32], [0, 1, 2]])),
             data,
             args.output_dir,
             args.base_name,
